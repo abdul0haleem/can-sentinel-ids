@@ -81,4 +81,4 @@ Roles carry over to Project 2; week-wise tasks will be assigned once the project
 
 | Version | Date | Change |
 | --- | --- | --- |
-| 1.0 | Oct 6, 2026 | First draft, before kickoff call |
+| 1.0 | Oct 7, 2026 | First draft, before kickoff call |
