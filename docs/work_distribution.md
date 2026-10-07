@@ -17,18 +17,18 @@ Group 3 splits Project 1 (CAN-Sentinel, Automotive ECU Intrusion Detection Syste
 | Member | Role | Track | GitHub username | Branch | Owns (folder) |
 | --- | --- | --- | --- | --- | --- |
 | Abinaya Francisca EP | Team Lead, Security Lead | Track 2 (AI) | abinayafranciscaep | lead | Threat model, ML engine, detection logic, integration (ml\_engine/, docs/) |
-| Abdul | Member 1, CAN Systems Engineer | Track 1 (Low-level C) | abdul0haleem | member-1 | vcan0 setup, C ECU simulators (ecu\_sim/) |
+| Haleem | Member 1, CAN Systems Engineer | Track 1 (Low-level C) | abdul0haleem | member-1 | vcan0 setup, C ECU simulators (ecu\_sim/) |
 | Chetan | Member 2, Attack and Sniffer Engineer | Track 1 (Low-level C) | chetan1876 | member-2 | Attacker script, C sniffer, Unix socket bridge (attacker/, sniffer/) |
-| Sadhamil | Member 3, Logging and Dashboard Engineer | Track 2 (UI) | Msadha27 | member-3 | CSV logger, PyQt dashboard, test plan (dashboard/) |
+| Sadhamail | Member 3, Logging and Dashboard Engineer | Track 2 (UI) | Msadha27 | member-3 | CSV logger, PyQt dashboard, test plan (dashboard/) |
 
 ## Project 1: week-wise task distribution
 
 Weeks 1-2 are checked at the mid review (proposed Oct 25); Weeks 3-4 at the final review (proposed Nov 10).
 
-| Week | Abinaya (Lead) | Abdul (Member 1) | Chetan (Member 2) | Sadhamil (Member 3) |
+| Week | Abinaya (Lead) | Haleem (Member 1) | Chetan (Member 2) | Sadhamail (Member 3) |
 | --- | --- | --- | --- | --- |
 | Week 1 (Oct 5-11): environment and design | Repo, branches and workflow setup; threat model (STRIDE, MITRE ATT&CK for ICS); attack catalogue; data schemas; Week 1 design document | vcan0 setup guide for the team (WSL2 or Ubuntu VM); C ECU simulators for brake, steering, RPM, speed, temperature, infotainment | Attacker script skeleton with flood attack; start C sniffer on a raw CAN socket | CSV logger in the agreed 5-column format; first 10-minute normal-traffic CSV |
-| Week 2 (Oct 12-18): data and model | Feature extraction (per-ID rate, inter-arrival variance, payload entropy, ID distribution); Isolation Forest training; rules and statistics layers; per-attack evaluation; reusable detection script with README | ECU timing jitter and realistic signal variation; 3 normal runs of 10 min each with Sadhamil | Remaining attacks (spoof\_brake, replay, fuzz, masquerade, diag\_abuse); 3 labeled runs of 2 min per attack; working C sniffer | Log all normal and attack datasets; dashboard layout mock-up; mid review social media video draft |
+| Week 2 (Oct 12-18): data and model | Feature extraction (per-ID rate, inter-arrival variance, payload entropy, ID distribution); Isolation Forest training; rules and statistics layers; per-attack evaluation; reusable detection script with README | ECU timing jitter and realistic signal variation; 3 normal runs of 10 min each with Sadhamail | Remaining attacks (spoof\_brake, replay, fuzz, masquerade, diag\_abuse); 3 labeled runs of 2 min per attack; working C sniffer | Log all normal and attack datasets; dashboard layout mock-up; mid review social media video draft |
 | Week 3 (Oct 19-25): live integration | Connect ML engine to live sniffer stream; alert JSON output; first threshold tuning; mid review viva preparation | One-command launch script for vcan0 and all ECUs; support socket bridge testing | Unix domain socket bridge from sniffer to ML engine; mid review demo run | Live PyQt dashboard: traffic view, threat gauge, car diagram fed by alert JSON |
 | Week 4 (Oct 26-Nov 4): polish and bonus | Final threshold tuning; final evaluation (precision, recall, time-to-detect per attack); incident response playbook; final report | Code cleanup and setup documentation; support for error-frame countermeasure testing | Bonus: error-frame countermeasure against injected frames; attack demo scripts | Dashboard polish; test plan and QA; final demo video and social media video |
 
@@ -40,11 +40,11 @@ Each module depends on the one before it, so these hand-offs set the critical pa
 
 | From | To | What is handed over | Agreed format | Needed by |
 | --- | --- | --- | --- | --- |
-| Abdul | Everyone | Working vcan0 and ECU simulators | Setup guide + run script in ecu\_sim/ | Oct 10 |
-| Sadhamil | Abinaya | Normal-traffic training data | CSV: timestamp, can\_id, dlc, data\_hex, label | Oct 10 (first file) |
-| Chetan | Sadhamil | Labeled attack traffic | Same CSV, with attack injection log for labeling | Oct 16 |
+| Haleem | Everyone | Working vcan0 and ECU simulators | Setup guide + run script in ecu\_sim/ | Oct 10 |
+| Sadhamail | Abinaya | Normal-traffic training data | CSV: timestamp, can\_id, dlc, data\_hex, label | Oct 10 (first file) |
+| Chetan | Sadhamail | Labeled attack traffic | Same CSV, with attack injection log for labeling | Oct 16 |
 | Chetan | Abinaya | Live frame stream | One JSON line per frame over a Unix domain socket | Oct 22 |
-| Abinaya | Sadhamil | Alerts for the dashboard | Alert JSON: timestamp, attack\_type, suspect\_id, confidence, severity, affected\_system, detection\_layer, technique | Oct 22 |
+| Abinaya | Sadhamail | Alerts for the dashboard | Alert JSON: timestamp, attack\_type, suspect\_id, confidence, severity, affected\_system, detection\_layer, technique | Oct 22 |
 
 Full schemas are in docs/week1\_design.md in the repository; any change needs team agreement.
 
@@ -66,18 +66,18 @@ Roles carry over to Project 2; week-wise tasks will be assigned once the project
 | Member | Role in Project 2 | Week 1 | Week 2 | Week 3 | Week 4 |
 | --- | --- | --- | --- | --- | --- |
 | Abinaya Francisca EP | Team Lead | To be assigned | To be assigned | To be assigned | To be assigned |
-| Abdul | Member 1 | To be assigned | To be assigned | To be assigned | To be assigned |
+| Haleem | Member 1 | To be assigned | To be assigned | To be assigned | To be assigned |
 | Chetan | Member 2 | To be assigned | To be assigned | To be assigned | To be assigned |
-| Sadhamil | Member 3 | To be assigned | To be assigned | To be assigned | To be assigned |
+| Sadhamail | Member 3 | To be assigned | To be assigned | To be assigned | To be assigned |
 
 ## Sign-off
 
 | Name | Role | Agreed (date) |
 | --- | --- | --- |
 | Abinaya Francisca EP | Team Lead | Oct 7, 2026 |
-| Abdul | Member 1 | Oct 7, 2026 |
+| Haleem | Member 1 | Oct 7, 2026 |
 | Chetan | Member 2 | Oct 7, 2026 |
-| Sadhamil | Member 3 | Oct 7, 2026 |
+| Sadhamail | Member 3 | Oct 7, 2026 |
 
 | Version | Date | Change |
 | --- | --- | --- |
