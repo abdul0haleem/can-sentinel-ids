@@ -218,3 +218,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# C compiled binaries & build artifacts
+*.o
+*.out
+ecu_sim/ecu_simulator
+ecu_sim/test_payloads
+ecu_sim/brake_receiver
+sniffer/can_sniffer
+
+# Unix Domain Sockets
+*.sock
+/tmp/*.sock
+
+# OS Artifacts
+.DS_Store
+Thumbs.db
