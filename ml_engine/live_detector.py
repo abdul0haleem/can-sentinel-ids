@@ -13,6 +13,14 @@ Usage (from the repository root):
     python ml_engine/live_detector.py                       # live, from the sniffer socket
     python ml_engine/live_detector.py --replay data/flood_run1_1013.csv
 
+With --gateway, confirmed attacks are also sent to the security gateway, which
+quarantines the CAN ID (docs/gateway_design.md):
+    python ml_engine/live_detector.py --alerts alerts.jsonl --gateway
+
+In live mode the detector waits for the sniffer if it is not running yet,
+reconnects if the sniffer restarts, and skips malformed lines instead of
+stopping.
+
 Author: Abinaya Francisca EP (Team Lead)
 """
 
@@ -27,26 +35,88 @@ import pandas as pd
 from alerts import to_json_line
 from detect import Detector
 from features import normalise_id, payload_entropy
+from gateway_client import GATEWAY_SOCKET, GatewayClient, decide_action
 from train_model import MODEL_PATH
 
 SOCKET_PATH = "/tmp/can_sentinel.sock"
 ALERT_FILE = "alerts.jsonl"
 
 
-def frames_from_socket(path):
-    """Yield frame dicts from the sniffer's Unix domain socket."""
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-        s.connect(path)
-        buffer = ""
-        while True:
-            chunk = s.recv(4096).decode("utf-8", errors="replace")
-            if not chunk:
-                return
-            buffer += chunk
-            while "\n" in buffer:
-                line, buffer = buffer.split("\n", 1)
-                if line.strip():
-                    yield json.loads(line)
+REQUIRED_FIELDS = ("timestamp", "can_id", "dlc", "data_hex")
+
+
+def parse_line(line):
+    """One NDJSON line from the sniffer -> frame dict, or None if it is not a valid frame.
+
+    A bad line (cut off, not JSON, missing a field) is skipped instead of
+    stopping the detector.
+    """
+    line = line.strip()
+    if not line:
+        return None
+    try:
+        frame = json.loads(line)
+        if not all(k in frame for k in REQUIRED_FIELDS):
+            return None
+        frame["timestamp"] = float(frame["timestamp"])
+        frame["dlc"] = int(frame["dlc"])
+        frame["data_hex"] = str(frame["data_hex"] or "")
+        return frame
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def split_lines(buffer, chunk):
+    """Add a received chunk to the buffer; return (complete lines, leftover)."""
+    buffer += chunk
+    *lines, rest = buffer.split("\n")
+    return lines, rest
+
+
+def connect(path, retries, wait):
+    """Connect to the sniffer, retrying while it is not running yet."""
+    for attempt in range(1, retries + 1):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            s.connect(path)
+            print(f"Connected to sniffer at {path}", flush=True)
+            return s
+        except OSError as e:
+            s.close()
+            print(f"Sniffer not ready ({e.strerror}); retry {attempt}/{retries} in {wait:.0f} s",
+                  flush=True)
+            time.sleep(wait)
+    raise SystemExit(f"Could not connect to {path}. Is the sniffer running?")
+
+
+def frames_from_socket(path, retries=30, wait=2.0, reconnect=True):
+    """Yield frame dicts from the sniffer's Unix domain socket.
+
+    If the sniffer is not running yet, keep retrying; if it stops, reconnect
+    (unless reconnect is False). Bad lines are counted and skipped.
+    """
+    skipped = 0
+    while True:
+        with connect(path, retries, wait) as s:
+            buffer = ""
+            while True:
+                chunk = s.recv(4096).decode("utf-8", errors="replace")
+                if not chunk:
+                    break
+                lines, buffer = split_lines(buffer, chunk)
+                for line in lines:
+                    frame = parse_line(line)
+                    if frame is None:
+                        if line.strip():
+                            skipped += 1
+                            if skipped in (1, 10, 100) or skipped % 1000 == 0:
+                                print(f"Skipped {skipped} malformed line(s) from the sniffer",
+                                      flush=True)
+                        continue
+                    yield frame
+        print("Sniffer closed the connection.", flush=True)
+        if not reconnect:
+            return
 
 
 def frames_from_csv(path, realtime=False):
@@ -72,7 +142,9 @@ def to_frame_table(window):
     return df
 
 
-def run(source, window_len=1.0, step=0.5, model_path=MODEL_PATH, alert_file=ALERT_FILE):
+def run(source, window_len=1.0, step=0.5, model_path=MODEL_PATH, alert_file=ALERT_FILE,
+        gateway=None):
+    """Detect on a stream of frames; with a GatewayClient, also block confirmed attacks."""
     detector = Detector(model_path, window_len)
     window = deque()
     next_check = None
@@ -92,6 +164,13 @@ def run(source, window_len=1.0, step=0.5, model_path=MODEL_PATH, alert_file=ALER
                     out.write(line + "\n")
                     out.flush()
                     total += 1
+                    command = decide_action(alert) if gateway else None
+                    if command:
+                        reply = gateway.send(command)
+                        if reply and reply.get("ok") and not reply.get("renewed"):
+                            print(f"GATEWAY: quarantined {command['can_id']} "
+                                  f"({command['mode']} mode, {command['duration_s']:.0f} s)",
+                                  flush=True)
                 next_check = now + step
     print(f"Stream ended; {total} alerts written to {alert_file}")
 
@@ -103,9 +182,18 @@ def main():
     p.add_argument("--realtime", action="store_true", help="replay at recorded speed")
     p.add_argument("--model", default=MODEL_PATH)
     p.add_argument("--alerts", default=ALERT_FILE)
+    p.add_argument("--retries", type=int, default=30, help="connection attempts before giving up")
+    p.add_argument("--no-reconnect", action="store_true", help="stop when the sniffer stops")
+    p.add_argument("--gateway", action="store_true",
+                   help="send quarantine commands to the security gateway (detect -> block)")
+    p.add_argument("--gateway-socket", default=GATEWAY_SOCKET)
     a = p.parse_args()
-    source = frames_from_csv(a.replay, a.realtime) if a.replay else frames_from_socket(a.socket)
-    run(source, model_path=a.model, alert_file=a.alerts)
+    if a.replay:
+        source = frames_from_csv(a.replay, a.realtime)
+    else:
+        source = frames_from_socket(a.socket, a.retries, reconnect=not a.no_reconnect)
+    gateway = GatewayClient(a.gateway_socket) if a.gateway else None
+    run(source, model_path=a.model, alert_file=a.alerts, gateway=gateway)
 
 
 if __name__ == "__main__":
